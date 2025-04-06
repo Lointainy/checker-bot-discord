@@ -10,9 +10,9 @@ module.exports = {
 	data: new SlashCommandBuilder()
 		.setName('time')
 		.setDescription('Set times after user is kicked')
-		.addIntegerOption((option) => option.setName('hours').setDescription('Hours').setRequired(true))
-		.addIntegerOption((option) => option.setName('minutes').setDescription('Minunter').setRequired(false))
-		.addIntegerOption((option) => option.setName('interval').setDescription('Seconds').setRequired(false)),
+		.addIntegerOption((option) => option.setName('hours').setDescription('Hours max 24h').setRequired(true))
+		.addIntegerOption((option) => option.setName('minutes').setDescription('Minutes min 1').setRequired(false))
+		.addIntegerOption((option) => option.setName('interval').setDescription('Seconds min 60sec').setRequired(false)),
 
 	async execute(interaction) {
 		const guildId = interaction.guild.id;
@@ -20,9 +20,9 @@ module.exports = {
 		const minutes = interaction.options.getInteger('minutes');
 		const interval = interaction.options.getInteger('interval');
 
-		settings[guildId].time.hours = hours;
-		settings[guildId].time.minutes = minutes;
-		settings[guildId].time.checkInterval = interval;
+		settings[guildId].time.hours = hours > 24 ? 24 : hours;
+		settings[guildId].time.minutes = minutes < 1 && hours == 0 ? 1 : minutes;
+		settings[guildId].time.checkInterval = interval < 60 ? 60 : interval;
 
 		fs.writeFileSync(SETTINGS_PATH, JSON.stringify(settings, null, 2));
 
