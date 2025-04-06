@@ -3,29 +3,21 @@ const path = require('path');
 
 const { SlashCommandBuilder } = require('discord.js');
 
-const settings = path.resolve(__dirname, '..', 'config', 'settings.json');
-const defaultSettings = path.resolve(__dirname, '..', 'config', 'settingsDefault.json');
+const SETTINGS_PATH = path.resolve(__dirname, '..', 'data', 'settings.json');
+const settings = JSON.parse(fs.readFileSync(SETTINGS_PATH, 'utf8'));
+const defaultSettings = require('../config/default');
 
 module.exports = {
 	data: new SlashCommandBuilder().setName('reset').setDescription('Reset settings'),
 
 	async execute(interaction) {
+		const guildId = interaction.guildId;
 		try {
-			if (!fs.existsSync(defaultSettings)) {
-				throw new Error(`❌ Default settings file not found at: ${defaultSettings}`);
-			}
-			if (!fs.existsSync(settings)) {
-				throw new Error(`❌ Settings file not found at: ${settings}`);
-			}
-
-			let config = {
-				default: JSON.parse(fs.readFileSync(defaultSettings)),
-				main: JSON.parse(fs.readFileSync(settings))
+			settings[guildId] = {
+				...defaultSettings
 			};
 
-			config.main = config.default;
-
-			fs.writeFileSync(settings, JSON.stringify(config.main, null, 2));
+			fs.writeFileSync(SETTINGS_PATH, JSON.stringify(settings, null, 2));
 
 			await interaction.reply(`✅ Settings have been reset to default.`);
 		} catch (error) {

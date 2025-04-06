@@ -5,18 +5,16 @@ const path = require('path');
 
 const { Client, Events, GatewayIntentBits, Collection, SlashCommandBuilder, REST, Routes } = require('discord.js');
 const { convertToMilliseconds, updateConfig } = require('./utility');
+const { CLIENT_ID, TOKEN } = process.env;
 
-const { ROLE_ID, GUILD_ID, CLIENT_ID, TOKEN } = process.env;
-
-const FILE_PATH = path.join(__dirname, 'data', 'joinTimes.json');
-const SETTINGS_PATH = path.join(__dirname, 'config', 'settings.json');
+const SETTINGS_PATH = path.join(__dirname, 'data', 'settings.json');
 const COMMANDS_PATH = path.join(__dirname, 'commands');
 
-let config = JSON.parse(fs.readFileSync(SETTINGS_PATH));
+const defaultSettings = require('./config/default');
+const settings = JSON.parse(fs.readFileSync(SETTINGS_PATH, 'utf8'));
 
-let userJoinTimes = {};
-let firstRunBot = true;
 const commands = [];
+const guildIntervals = new Map();
 
 const client = new Client({
 	intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMembers]
@@ -24,38 +22,41 @@ const client = new Client({
 
 client.commands = new Collection();
 
-fs.watch(SETTINGS_PATH, (eventType) => {
-	if (eventType === 'change') {
-		updateConfig(config, SETTINGS_PATH);
-	}
-});
-
-if (fs.existsSync(FILE_PATH)) {
-	userJoinTimes = JSON.parse(fs.readFileSync(FILE_PATH));
-}
-
 client.on('ready', async () => {
 	console.log(`✅ Logged in as ${client.user.tag}`);
 
-	if (firstRunBot) {
-		console.log('1️⃣  First run');
+	await deployCommands();
 
-		await deployCommands();
-		await registerCommands();
-		await checkAllMembers();
+	for (const [guildId] of client.guilds.cache) {
+		if (!settings[guildId]) {
+			settings[guildId] = {
+				...defaultSettings
+			};
 
-		firstRunBot = false;
+			saveSettings();
+
+			console.log(`➕  New guild settings added: ${guildId}`);
+		}
+
+		await registerCommands(guildId);
+		await checkMembers(guildId);
+
+		setInterval(() => checkMembers(guildId), settings[guildId].time.checkInterval * 1000);
 	}
-
-	setInterval(checkMembers, config.time.checkInterval * 1000);
 });
 
 client.on('guildMemberAdd', (member) => {
-	if (!member.user.bot) {
-		userJoinTimes[member.id] = Date.now();
-		saveJoinTimes();
-		console.log(`👤 ${member.user.tag} is join`);
+	const guildId = member.guild.id;
+	const hasRole = member.roles.cache.has(settings[guildId].role);
+
+	if (!member.user.bot && hasRole) {
+		settings[guildId].users[member.id] = {
+			joinedAt: member.joinedAt.getTime()
+		};
+		saveSettings();
 	}
+
+	console.log(`👤 ${member.user.tag} is join to ${guildId}`);
 });
 
 client.on(Events.InteractionCreate, async (interaction) => {
@@ -80,24 +81,11 @@ client.on(Events.InteractionCreate, async (interaction) => {
 	}
 });
 
-function saveJoinTimes() {
-	fs.writeFileSync(FILE_PATH, JSON.stringify(userJoinTimes, null, 2));
+function saveSettings() {
+	fs.writeFileSync(SETTINGS_PATH, JSON.stringify(settings, null, 2));
 }
 
-async function registerCommands() {
-	const rest = new REST().setToken(TOKEN);
-	try {
-		console.log(`#️⃣  Started refreshing ${commands.length} application (/) commands.`);
-
-		const data = await rest.put(Routes.applicationGuildCommands(CLIENT_ID, GUILD_ID), { body: commands });
-
-		console.log(`✅ Successfully reloaded ${data.length} application (/) commands.`);
-	} catch (error) {
-		console.error(error);
-	}
-}
-
-async function deployCommands(params) {
+async function deployCommands() {
 	const commandFiles = fs.readdirSync(COMMANDS_PATH).filter((file) => file.endsWith('.js'));
 
 	for (const file of commandFiles) {
@@ -113,52 +101,68 @@ async function deployCommands(params) {
 	}
 }
 
-async function checkAllMembers() {
-	const guild = await client.guilds.fetch(GUILD_ID);
-	const members = await guild.members.fetch();
-	let count = 0;
+async function registerCommands(guildId) {
+	const rest = new REST().setToken(TOKEN);
+	try {
+		console.log(`#️⃣  Started refreshing ${commands.length} application (/) commands.`);
 
-	for (const member of members.values()) {
-		if (!member.user.bot && member.roles.cache.has(ROLE_ID)) {
-			if (!userJoinTimes[member.id]) {
-				userJoinTimes[member.id] = member.joinedAt.getTime();
-			}
-			count += 1;
-		}
+		const data = await rest.put(Routes.applicationGuildCommands(CLIENT_ID, guildId), { body: commands });
+
+		console.log(`✅ Successfully reloaded ${data.length} application (/) commands.`);
+	} catch (error) {
+		console.error(error);
 	}
-
-	console.log(`😈 ${count} devils found`);
-
-	saveJoinTimes();
 }
 
-async function checkMembers() {
-	const guild = await client.guilds.fetch(GUILD_ID);
+async function checkMembers(guildId) {
+	const guild = await client.guilds.fetch(guildId);
 	const members = await guild.members.fetch();
-	const timeLimit = convertToMilliseconds(config.time.hours, config.time.minutes);
+	const timeLimit = convertToMilliseconds(settings[guildId].time.hours, settings[guildId].time.minutes);
+	let count = {
+		total: 0,
+		deleted: 0
+	};
+	timePassed = '';
 
 	for (const member of members.values()) {
-		const joinTime = userJoinTimes[member.id];
-		const hasRole = member.roles.cache.has(ROLE_ID);
-		const timePassed = Date.now() - joinTime;
+		const hasRole = member.roles.cache.has(settings[guildId].role);
 
-		if (!member.user.bot && joinTime && hasRole) {
+		if (!member.user.bot && hasRole) {
+			l;
+			count.total += 1;
+
+			if (!settings[guildId].users[member.id]) {
+				settings[guildId].users[member.id] = {
+					joinedAt: member.joinedAt.getTime()
+				};
+			}
+
+			const joinTime = settings[guildId].users[member.id].joinedAt;
+			const timePassed = Date.now() - joinTime;
+
 			if (timePassed > timeLimit) {
 				try {
-					await member.send(config.msg.kickMsgDM);
-					await member.kick('');
+					await member.send(settings[guildId].msg.dm);
+					await member.kick('settings[guildId].msg.main');
 
-					console.log(`🚪 Kicked ${member.user.tag}`);
+					console.log(`🚪 Kicked ${member.id} from ${guildId}`);
 				} catch (err) {
 					console.error(`❌ Kick failed ${member.user.tag}:`, err.message);
 				}
 
-				delete userJoinTimes[member.id];
+				count.deleted += 1;
 
-				saveJoinTimes();
+				delete settings[guildId].users[member.id];
+
+				saveSettings();
 			}
 		}
 	}
+
+	console.log(`😈 ${count.total} devils found on ${guildId}`);
+	console.log(`😈 ${count.deleted} devils deleted from ${guildId}`);
+
+	saveSettings();
 }
 
 client.login(TOKEN);
