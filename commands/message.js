@@ -4,8 +4,6 @@ const path = require('path');
 const { SlashCommandBuilder } = require('discord.js');
 const { loadSettings, saveSettings } = require('../services/settings');
 
-let settings = loadSettings();
-
 module.exports = {
 	data: new SlashCommandBuilder()
 		.setName('message')
@@ -14,8 +12,8 @@ module.exports = {
 		.addStringOption((option) => option.setName('msgdm').setDescription('Message to send as DM when kicking user').setRequired(true)),
 
 	async execute(interaction) {
+		let settings = loadSettings();
 		const guildId = interaction.guild.id;
-
 		const msg = interaction.options.getString('msg');
 		const msgDM = interaction.options.getString('msgdm');
 

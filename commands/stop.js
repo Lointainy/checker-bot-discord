@@ -6,13 +6,13 @@ const { loadSettings, saveSettings } = require('../services/settings');
 const defaultSettings = require('../config/default');
 const { stopInterval } = require('../services/interval');
 
-let settings = loadSettings();
-
 module.exports = {
 	data: new SlashCommandBuilder().setName('stop').setDescription('Stop bot'),
 
 	async execute(interaction) {
+		let settings = loadSettings();
 		const guildId = interaction.guildId;
+
 		try {
 			settings[guildId].status = false;
 

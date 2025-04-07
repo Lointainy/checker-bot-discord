@@ -6,8 +6,6 @@ const { loadSettings, saveSettings } = require('../services/settings');
 const { updateInterval } = require('../services/interval');
 const defaultSettings = require('../config/default');
 
-let settings = loadSettings();
-
 module.exports = {
 	data: new SlashCommandBuilder()
 		.setName('time')
@@ -17,6 +15,7 @@ module.exports = {
 		.addIntegerOption((option) => option.setName('interval').setDescription('Seconds min 600sec').setRequired(false)),
 
 	async execute(interaction) {
+		let settings = loadSettings();
 		const guildId = interaction.guild.id;
 		let hours = interaction.options.getInteger('hours');
 		let minutes = interaction.options.getInteger('minutes');

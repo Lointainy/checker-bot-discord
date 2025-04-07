@@ -12,7 +12,6 @@ const intervalManager = require('./services/interval');
 const COMMANDS_PATH = path.join(__dirname, 'commands');
 
 const defaultSettings = require('./config/default');
-let settings = loadSettings();
 
 const commands = [];
 
@@ -30,6 +29,7 @@ client.on('ready', async () => {
 	await registerCommands();
 
 	for (const [guildId] of client.guilds.cache) {
+		let settings = loadSettings();
 		const status = settings[guildId].status;
 		const interval = settings[guildId].time.checkInterval;
 
@@ -53,6 +53,7 @@ client.on('ready', async () => {
 });
 
 client.on('guildCreate', async (guild) => {
+	let settings = loadSettings();
 	const guildId = guild.id;
 
 	console.log(`➕ Bot added to new guild: ${guild.name} (${guildId})`);
@@ -74,6 +75,7 @@ client.on('guildCreate', async (guild) => {
 });
 
 client.on('guildDelete', async (guild) => {
+	let settings = loadSettings();
 	const guildId = guild.id;
 
 	console.log(`❌ Bot removed from guild: ${guildId}`);
@@ -89,6 +91,7 @@ client.on('guildDelete', async (guild) => {
 });
 
 client.on('guildMemberAdd', (member) => {
+	let settings = loadSettings();
 	const guildId = member.guild.id;
 	const hasRole = member.roles.cache.has(settings[guildId].role);
 
@@ -160,6 +163,7 @@ async function registerCommands(guildId) {
 }
 
 async function checkMembers(guildId) {
+	let settings = loadSettings();
 	const guild = await client.guilds.fetch(guildId);
 	const members = await guild.members.fetch();
 	const timeLimit = convertToMilliseconds(settings[guildId].time.hours, settings[guildId].time.minutes);
@@ -202,8 +206,6 @@ async function checkMembers(guildId) {
 				count.deleted += 1;
 
 				delete settings[guildId].users[member.id];
-
-				saveSettings(settings);
 			}
 		}
 	}

@@ -4,8 +4,6 @@ const path = require('path');
 const { SlashCommandBuilder } = require('discord.js');
 const { loadSettings, saveSettings } = require('../services/settings');
 
-let settings = loadSettings();
-
 module.exports = {
 	data: new SlashCommandBuilder()
 		.setName('role')
@@ -13,6 +11,7 @@ module.exports = {
 		.addStringOption((option) => option.setName('id').setDescription('Set Role id').setRequired(true)),
 
 	async execute(interaction) {
+		let settings = loadSettings();
 		const roleId = interaction.options.getString('id');
 		const guild = interaction.guild;
 		const { id: guildId } = guild;

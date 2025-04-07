@@ -5,13 +5,13 @@ const { SlashCommandBuilder } = require('discord.js');
 const { loadSettings, saveSettings } = require('../services/settings');
 const defaultSettings = require('../config/default');
 
-let settings = loadSettings();
-
 module.exports = {
 	data: new SlashCommandBuilder().setName('reset').setDescription('Reset settings'),
 
 	async execute(interaction) {
+		let settings = loadSettings();
 		const guildId = interaction.guildId;
+
 		try {
 			settings[guildId] = {
 				...defaultSettings
