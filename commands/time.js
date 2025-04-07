@@ -2,9 +2,11 @@ const fs = require('fs');
 const path = require('path');
 
 const { SlashCommandBuilder } = require('discord.js');
+const { loadSettings, saveSettings } = require('../services/settings');
+const { updateInterval } = require('../services/interval');
+const defaultSettings = require('../config/default');
 
-const SETTINGS_PATH = path.resolve(__dirname, '..', 'data', 'settings.json');
-const settings = JSON.parse(fs.readFileSync(SETTINGS_PATH, 'utf8'));
+let settings = loadSettings();
 
 module.exports = {
 	data: new SlashCommandBuilder()
@@ -16,15 +18,31 @@ module.exports = {
 
 	async execute(interaction) {
 		const guildId = interaction.guild.id;
-		const hours = interaction.options.getInteger('hours');
-		const minutes = interaction.options.getInteger('minutes');
-		const interval = interaction.options.getInteger('interval');
+		let hours = interaction.options.getInteger('hours');
+		let minutes = interaction.options.getInteger('minutes');
+		let interval = interaction.options.getInteger('interval');
 
-		settings[guildId].time.hours = hours > 24 ? 24 : hours;
-		settings[guildId].time.minutes = minutes < 1 && hours == 0 ? 1 : minutes;
-		settings[guildId].time.checkInterval = interval < 600 ? 600 : interval;
+		hours = Math.min(hours, defaultSettings.time.hours);
 
-		fs.writeFileSync(SETTINGS_PATH, JSON.stringify(settings, null, 2));
+		if (hours === 0 && minutes < 1) {
+			minutes = 1;
+		}
+
+		if (hours === 24) {
+			minutes = 0;
+		}
+
+		minutes = Math.min(minutes, 60);
+
+		interval = Math.max(Math.min(interval, defaultSettings.time.checkInterval), defaultSettings.time.checkInterval);
+
+		settings[guildId].time.hours = hours;
+		settings[guildId].time.minutes = minutes;
+		settings[guildId].time.checkInterval = interval;
+
+		saveSettings(settings);
+
+		updateInterval(guildId, interval);
 
 		await interaction.reply(`✅ Time updated: ${hours} hours and ${minutes} minutes. Bot update interval ${interval}`);
 	}

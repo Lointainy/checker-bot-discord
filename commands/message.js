@@ -2,9 +2,9 @@ const fs = require('fs');
 const path = require('path');
 
 const { SlashCommandBuilder } = require('discord.js');
+const { loadSettings, saveSettings } = require('../services/settings');
 
-const SETTINGS_PATH = path.resolve(__dirname, '..', 'data', 'settings.json');
-const settings = JSON.parse(fs.readFileSync(SETTINGS_PATH, 'utf8'));
+let settings = loadSettings();
 
 module.exports = {
 	data: new SlashCommandBuilder()
@@ -19,13 +19,12 @@ module.exports = {
 		const msg = interaction.options.getString('msg');
 		const msgDM = interaction.options.getString('msgdm');
 
-		let config = JSON.parse(fs.readFileSync(SETTINGS_PATH));
-
 		settings[guildId].msg.main = msg;
 		settings[guildId].msg.dm = msgDM;
 
-		fs.writeFileSync(SETTINGS_PATH, JSON.stringify(settings, null, 2));
+		saveSettings(settings);
 
 		await interaction.reply(`✅ Text message updated`);
 	}
 };
+

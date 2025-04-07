@@ -2,10 +2,10 @@ const fs = require('fs');
 const path = require('path');
 
 const { SlashCommandBuilder } = require('discord.js');
-
-const SETTINGS_PATH = path.resolve(__dirname, '..', 'data', 'settings.json');
-const settings = JSON.parse(fs.readFileSync(SETTINGS_PATH, 'utf8'));
+const { loadSettings, saveSettings } = require('../services/settings');
 const defaultSettings = require('../config/default');
+
+let settings = loadSettings();
 
 module.exports = {
 	data: new SlashCommandBuilder().setName('reset').setDescription('Reset settings'),
@@ -17,7 +17,9 @@ module.exports = {
 				...defaultSettings
 			};
 
-			fs.writeFileSync(SETTINGS_PATH, JSON.stringify(settings, null, 2));
+			saveSettings(settings);
+
+			updateInterval(guildId, defaultSettings.time.checkInterval);
 
 			await interaction.reply(`✅ Settings have been reset to default.`);
 		} catch (error) {

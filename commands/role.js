@@ -2,9 +2,9 @@ const fs = require('fs');
 const path = require('path');
 
 const { SlashCommandBuilder } = require('discord.js');
+const { loadSettings, saveSettings } = require('../services/settings');
 
-const SETTINGS_PATH = path.resolve(__dirname, '..', 'data', 'settings.json');
-const settings = JSON.parse(fs.readFileSync(SETTINGS_PATH, 'utf8'));
+let settings = loadSettings();
 
 module.exports = {
 	data: new SlashCommandBuilder()
@@ -13,14 +13,20 @@ module.exports = {
 		.addStringOption((option) => option.setName('id').setDescription('Set Role id').setRequired(true)),
 
 	async execute(interaction) {
-		const guildId = interaction.guild.id;
 		const roleId = interaction.options.getString('id');
+		const guild = interaction.guild;
+		const { id: guildId } = guild;
+		const role = guild.roles.cache.get(roleId);
+
+		if (!role) {
+			return await interaction.reply('❌ Role is not found.');
+		}
 
 		settings[guildId].role = roleId;
 
-		fs.writeFileSync(SETTINGS_PATH, JSON.stringify(settings, null, 2));
+		saveSettings(settings);
 
-		await interaction.reply(`✅ role is updated`);
+		await interaction.reply('✅ role is updated');
 	}
 };
 
