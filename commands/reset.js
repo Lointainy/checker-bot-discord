@@ -4,6 +4,7 @@ const path = require('path');
 const { SlashCommandBuilder } = require('discord.js');
 const { loadSettings, saveSettings } = require('../services/settings');
 const defaultSettings = require('../config/default');
+const { updateInterval } = require('../services/interval');
 
 module.exports = {
 	data: new SlashCommandBuilder().setName('reset').setDescription('Reset settings'),
