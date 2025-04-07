@@ -30,6 +30,9 @@ client.on('ready', async () => {
 	await registerCommands();
 
 	for (const [guildId] of client.guilds.cache) {
+		const status = settings[guildId].status;
+		const interval = settings[guildId].time.checkInterval;
+
 		if (!settings[guildId]) {
 			settings[guildId] = {
 				...defaultSettings
@@ -40,10 +43,12 @@ client.on('ready', async () => {
 			console.log(`➕  New guild settings added: ${guildId}`);
 		}
 
-		await checkMembers(guildId);
+		if (status) {
+			await checkMembers(guildId);
 
-		const interval = settings[guildId].time.checkInterval;
-		intervalManager.startInterval(guildId, interval);
+			intervalManager.startInterval(guildId, interval);
+			continue;
+		}
 	}
 });
 
