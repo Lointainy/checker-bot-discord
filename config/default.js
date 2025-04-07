@@ -1,4 +1,5 @@
 module.exports = {
+	status: true,
 	time: {
 		hours: 24,
 		minutes: 0,
