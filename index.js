@@ -30,8 +30,6 @@ client.on('ready', async () => {
 
 	for (const [guildId] of client.guilds.cache) {
 		let settings = loadSettings();
-		const status = settings[guildId].status;
-		const interval = settings[guildId].time.checkInterval;
 
 		if (!settings[guildId]) {
 			settings[guildId] = {
@@ -42,6 +40,9 @@ client.on('ready', async () => {
 
 			console.log(`➕  New guild settings added: ${guildId}`);
 		}
+
+		const status = settings[guildId].status;
+		const interval = settings[guildId].time.checkInterval;
 
 		if (status) {
 			await checkMembers(guildId);
@@ -86,8 +87,6 @@ client.on('guildDelete', async (guild) => {
 		delete settings[guildId];
 		saveSettings(settings);
 	}
-
-	client.guilds.cache.delete(guildId);
 });
 
 client.on('guildMemberAdd', (member) => {
@@ -164,19 +163,20 @@ async function registerCommands(guildId) {
 
 async function checkMembers(guildId) {
 	let settings = loadSettings();
-	const guild = await client.guilds.fetch(guildId);
+	let guild;
+	try {
+		guild = await client.guilds.fetch(guildId);
+	} catch (err) {
+		console.log(`❌ Guild ${guildId} is no longer available. Skipping...`);
+		return;
+	}
+
 	const members = await guild.members.fetch();
 	const timeLimit = convertToMilliseconds(settings[guildId].time.hours, settings[guildId].time.minutes);
 	let count = {
 		total: 0,
 		deleted: 0
 	};
-	timePassed = '';
-
-	if (!guild) {
-		console.log(`❌ Guild ${guildId} is no longer available. Skipping...`);
-		return;
-	}
 
 	for (const member of members.values()) {
 		const hasRole = member.roles.cache.has(settings[guildId].role);
@@ -196,7 +196,7 @@ async function checkMembers(guildId) {
 			if (timePassed > timeLimit) {
 				try {
 					await member.send(settings[guildId].msg.dm);
-					await member.kick('settings[guildId].msg.main');
+					await member.kick(settings[guildId].msg.main);
 
 					console.log(`🚪 Kicked ${member.id} from ${guildId}`);
 				} catch (err) {
